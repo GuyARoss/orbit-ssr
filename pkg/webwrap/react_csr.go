@@ -126,13 +126,43 @@ func (s *ReactCSR) RequiredBodyDOMElements(ctx context.Context, cache *CacheDOMO
 
 func (b *ReactCSR) Setup(ctx context.Context, settings *BundleOpts) (*BundledResource, error) {
 	page := jsparse.NewEmptyDocument()
-	bundleFilePath := fmt.Sprintf("%s/%s.js", b.PageOutputDir, settings.BundleKey)
 
 	if experiments.GlobalExperimentalFeatures.PreferViteCompiler {
+		bundleFilePath := fmt.Sprintf("%s/%s.jsx", b.PageOutputDir, settings.BundleKey)
+
+		page.AddOther(fmt.Sprintf(`
+import { defineConfig } from 'vite';
+import { resolve } from 'path';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    outDir: '../../dist',
+    manifest: true,
+    rollupOptions: {      
+      input: resolve(__dirname, "./%s.jsx"),
+      output: {
+        entryFileNames: '[name].js',
+        chunkFileNames: '[name].js',
+        assetFileNames: '[name].[ext]'
+      }
+    }    
+  },
+  optimizeDeps: {
+    include: ['@emotion/styled'],
+  },
+});
+`, settings.BundleKey))
 
 		return &BundledResource{
 			BundleOpFileDescriptor: map[string]string{"normal": bundleFilePath},
-			Configurators:          []BundleConfigurator{},
+			Configurators: []BundleConfigurator{
+				{
+					FilePath: fmt.Sprintf("%s/%s.config.js", b.PageOutputDir, settings.BundleKey),
+					Page:     page,
+				},
+			},
 		}, nil
 	}
 
@@ -156,6 +186,8 @@ func (b *ReactCSR) Setup(ctx context.Context, settings *BundleOpts) (*BundledRes
 
 	outputFileName := fmt.Sprintf("%s.js", settings.BundleKey)
 
+	bundleFilePath := fmt.Sprintf("%s/%s.js", b.PageOutputDir, settings.BundleKey)
+
 	page.AddOther(fmt.Sprintf(`module.exports = merge(baseConfig, {
 		entry: ['./%s'],
 		mode: '%s',
@@ -176,12 +208,12 @@ func (b *ReactCSR) Setup(ctx context.Context, settings *BundleOpts) (*BundledRes
 }
 
 func (b *ReactCSR) Bundle(configuratorFilePath string, filePath string) error {
-	if experiments.GlobalExperimentalFeatures.PreferViteCompiler { // TODO: do this once
-		cmd := exec.Command("vite", "build", ".orbit/base/pages", "--config", ".orbit/assets/vite.config.js")
-		output, err := cmd.Output()
+	if experiments.GlobalExperimentalFeatures.PreferViteCompiler {
+		cmd := exec.Command("vite", "build", ".orbit/base/pages", "--config", configuratorFilePath)
+		_, err := cmd.Output()
 
 		if err != nil {
-			b.Logger.Warn(fmt.Sprintf(`invalid pack: vite '%s'`, output))
+			b.Logger.Warn(fmt.Sprintf(`invalid pack: vite '%s'`, err))
 			return parseerror.New("failed to bundle, this could denote a syntax error", filePath)
 		}
 		return nil

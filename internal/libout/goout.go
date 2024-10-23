@@ -219,6 +219,13 @@ func (l *GOLibout) HTTPFile(packageName string) (LiboutFile, error) {
 	}, nil
 }
 
+func boolToString(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}
+
 func (l *GOLibout) EnvFile(bg *BundleGroup) (LiboutFile, error) {
 	out := strings.Builder{}
 
@@ -298,6 +305,9 @@ type DocumentRenderer struct {
 	}
 
 	out.WriteString(fmt.Sprintf(`var hotReloadPort int = %d`, bg.HotReloadPort))
+	out.WriteString("\n")
+
+	out.WriteString(fmt.Sprintf(`var useManifestConfig bool = %s`, boolToString(bg.UseManifestConfig)))
 	out.WriteString("\n")
 
 	out.WriteString("type PageRender string\n\n")

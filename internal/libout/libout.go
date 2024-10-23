@@ -14,11 +14,12 @@ import (
 )
 
 type BundleGroupOpts struct {
-	PackageName   string
-	BaseBundleOut string
-	BundleMode    string
-	PublicDir     string
-	HotReloadPort int
+	PackageName       string
+	BaseBundleOut     string
+	BundleMode        string
+	PublicDir         string
+	HotReloadPort     int
+	UseManifestConfig bool
 }
 
 type page struct {

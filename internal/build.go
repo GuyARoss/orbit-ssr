@@ -40,7 +40,6 @@ func Build(opts *BuildOpts) (srcpack.PackedComponentList, error) {
 	fileAssets := make([]fs.DirEntry, 0)
 	switch {
 	case experiments.GlobalExperimentalFeatures.PreferViteCompiler:
-		fileAssets = append(fileAssets, ats.AssetEntry(assets.VitePackConfig))
 	default:
 		fileAssets = append(fileAssets, ats.AssetEntry(assets.WebPackConfig),
 			ats.AssetEntry(assets.SSRProtoFile),
@@ -80,10 +79,11 @@ func Build(opts *BuildOpts) (srcpack.PackedComponentList, error) {
 	}
 
 	bg := libout.New(&libout.BundleGroupOpts{
-		PackageName:   opts.Packname,
-		BaseBundleOut: ".orbit/dist",
-		BundleMode:    opts.Mode,
-		PublicDir:     opts.PublicDir,
+		PackageName:       opts.Packname,
+		BaseBundleOut:     ".orbit/dist",
+		BundleMode:        opts.Mode,
+		PublicDir:         opts.PublicDir,
+		UseManifestConfig: experiments.GlobalExperimentalFeatures.PreferViteCompiler,
 	})
 
 	ctx := context.Background()

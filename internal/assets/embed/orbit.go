@@ -103,6 +103,10 @@ func buildHTMLPages(data []byte, pages ...PageRender) *htmlDoc {
 	ctx := context.Background()
 	for _, p := range pages {
 		if op := wrapDocRender[p]; op != nil {
+			if useManifestConfig {
+				html.Head = append(html.Head, fmt.Sprintf(`<link rel="stylesheet" href="/p/%s.css">`, string(p)))
+			}
+
 			html, ctx = op.fn(ctx, string(p), data, html)
 		}
 	}
