@@ -7,8 +7,9 @@ package experiments
 import "github.com/GuyARoss/orbit/pkg/log"
 
 type Features struct {
-	PreferSSR         bool
-	PreferSWCCompiler bool
+	PreferSSR          bool
+	PreferSWCCompiler  bool
+	PreferViteCompiler bool
 }
 
 var GlobalExperimentalFeatures *Features = &Features{}
@@ -22,6 +23,9 @@ func Load(logger log.Logger, features []string) error {
 		case "swc":
 			GlobalExperimentalFeatures.PreferSWCCompiler = true
 			logger.Warn("experimental feature 'prefer swc compiler' enabled\n")
+		case "vite":
+			GlobalExperimentalFeatures.PreferViteCompiler = true
+			logger.Warn("experimental feature 'prefer vite compiler' enabled\n")
 		}
 	}
 

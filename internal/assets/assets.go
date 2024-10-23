@@ -25,6 +25,7 @@ const (
 	PrimaryPackage   AssetKey = "orbit.go"
 	SSRProtoFile     AssetKey = "com.proto"
 	JsWebPackConfig  AssetKey = "jsbase.config.js"
+	VitePackConfig   AssetKey = "vite.config.js"
 )
 
 func WriteFile(toDir string, f fs.DirEntry) error {

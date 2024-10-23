@@ -75,7 +75,16 @@ module.exports = {
         ]
     },
     resolve: {
-        extensions: ['.js', '.jsx'],
-        modules: ['node_modules', path.resolve(__dirname, './')]
+        fallback: {
+            "react/jsx-runtime": "react/jsx-runtime.js",
+            "react/jsx-dev-runtime": "react/jsx-dev-runtime.js",
+        },
+        extensions: ['.js', '.jsx', '.mjs', '.json'],
+        modules: ['node_modules', path.resolve(__dirname, './')],
+        resolve: {
+            alias: {
+              'react/jsx-runtime': 'react/jsx-runtime.js',
+            },
+        }
     },
 };

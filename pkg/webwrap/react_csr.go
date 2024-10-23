@@ -51,6 +51,11 @@ func (s *ReactCSR) Apply(page jsparse.JSDocument) (map[string]jsparse.JSDocument
 }
 
 func (r *ReactCSR) VerifyRequirements() error {
+	if experiments.GlobalExperimentalFeatures.PreferViteCompiler {
+		// TODO: check for vite install
+		return nil
+	}
+
 	webpackPath := fmt.Sprintf("%s%c%s%c%s", r.NodeModulesDir, os.PathSeparator, ".bin", os.PathSeparator, "webpack")
 
 	// due to a "bug" with windows, it has an issue with shebang cmds, so we prefer the webpack.js file instead.
@@ -71,20 +76,31 @@ func (s *ReactCSR) Version() string {
 }
 
 func (s *ReactCSR) Stats() *WrapStats {
-	if experiments.GlobalExperimentalFeatures.PreferSWCCompiler {
+	switch {
+	case experiments.GlobalExperimentalFeatures.PreferSWCCompiler:
 		return &WrapStats{
 			WebVersion: "React CSR",
 			Bundler:    "swc",
 		}
-	}
 
-	return &WrapStats{
-		WebVersion: "React CSR",
-		Bundler:    "webpack",
+	case experiments.GlobalExperimentalFeatures.PreferViteCompiler:
+		return &WrapStats{
+			WebVersion: "React CSR",
+			Bundler:    "vite",
+		}
+	default:
+		return &WrapStats{
+			WebVersion: "React CSR",
+			Bundler:    "webpack",
+		}
 	}
 }
 
 func (s *ReactCSR) RequiredBodyDOMElements(ctx context.Context, cache *CacheDOMOpts) []string {
+	if experiments.GlobalExperimentalFeatures.PreferViteCompiler {
+		return []string{}
+	}
+
 	mode := ctx.Value(BundlerID).(string)
 
 	uris := make([]string, 0)
@@ -110,18 +126,28 @@ func (s *ReactCSR) RequiredBodyDOMElements(ctx context.Context, cache *CacheDOMO
 
 func (b *ReactCSR) Setup(ctx context.Context, settings *BundleOpts) (*BundledResource, error) {
 	page := jsparse.NewEmptyDocument()
+	bundleFilePath := fmt.Sprintf("%s/%s.js", b.PageOutputDir, settings.BundleKey)
+
+	if experiments.GlobalExperimentalFeatures.PreferViteCompiler {
+
+		return &BundledResource{
+			BundleOpFileDescriptor: map[string]string{"normal": bundleFilePath},
+			Configurators:          []BundleConfigurator{},
+		}, nil
+	}
 
 	page.AddImport(&jsparse.ImportDependency{
 		FinalStatement: "const {merge} = require('webpack-merge')",
 		Type:           jsparse.ModuleImportType,
 	})
 
-	if experiments.GlobalExperimentalFeatures.PreferSWCCompiler {
+	switch {
+	case experiments.GlobalExperimentalFeatures.PreferSWCCompiler:
 		page.AddImport(&jsparse.ImportDependency{
 			FinalStatement: "const baseConfig = require('../../assets/swc-base.config.js')",
 			Type:           jsparse.ModuleImportType,
 		})
-	} else {
+	default:
 		page.AddImport(&jsparse.ImportDependency{
 			FinalStatement: "const baseConfig = require('../../assets/base.config.js')",
 			Type:           jsparse.ModuleImportType,
@@ -129,7 +155,6 @@ func (b *ReactCSR) Setup(ctx context.Context, settings *BundleOpts) (*BundledRes
 	}
 
 	outputFileName := fmt.Sprintf("%s.js", settings.BundleKey)
-	bundleFilePath := fmt.Sprintf("%s/%s.js", b.PageOutputDir, settings.BundleKey)
 
 	page.AddOther(fmt.Sprintf(`module.exports = merge(baseConfig, {
 		entry: ['./%s'],
@@ -151,6 +176,17 @@ func (b *ReactCSR) Setup(ctx context.Context, settings *BundleOpts) (*BundledRes
 }
 
 func (b *ReactCSR) Bundle(configuratorFilePath string, filePath string) error {
+	if experiments.GlobalExperimentalFeatures.PreferViteCompiler { // TODO: do this once
+		cmd := exec.Command("vite", "build", ".orbit/base/pages", "--config", ".orbit/assets/vite.config.js")
+		output, err := cmd.Output()
+
+		if err != nil {
+			b.Logger.Warn(fmt.Sprintf(`invalid pack: vite '%s'`, output))
+			return parseerror.New("failed to bundle, this could denote a syntax error", filePath)
+		}
+		return nil
+	}
+
 	webpackPath := fmt.Sprintf("%s%c%s%c%s", b.NodeModulesDir, os.PathSeparator, ".bin", os.PathSeparator, "webpack")
 
 	// due to a "bug" with windows, it has an issue with shebang cmds, so we prefer the webpack.js file instead.

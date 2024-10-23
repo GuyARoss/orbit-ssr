@@ -14,6 +14,7 @@ import (
 	"github.com/GuyARoss/orbit/internal/assets"
 	"github.com/GuyARoss/orbit/internal/libout"
 	"github.com/GuyARoss/orbit/internal/srcpack"
+	"github.com/GuyARoss/orbit/pkg/experiments"
 	"github.com/GuyARoss/orbit/pkg/fsutils"
 	"github.com/GuyARoss/orbit/pkg/log"
 	"github.com/GuyARoss/orbit/pkg/webwrap"
@@ -36,16 +37,22 @@ func Build(opts *BuildOpts) (srcpack.PackedComponentList, error) {
 		return nil, err
 	}
 
+	fileAssets := make([]fs.DirEntry, 0)
+	switch {
+	case experiments.GlobalExperimentalFeatures.PreferViteCompiler:
+		fileAssets = append(fileAssets, ats.AssetEntry(assets.VitePackConfig))
+	default:
+		fileAssets = append(fileAssets, ats.AssetEntry(assets.WebPackConfig),
+			ats.AssetEntry(assets.SSRProtoFile),
+			ats.AssetEntry(assets.JsWebPackConfig),
+			ats.AssetEntry(assets.WebPackSWCConfig))
+	}
+
 	s := &FileStructure{
 		PackageName: opts.Packname,
 		OutDir:      opts.OutDir,
-		Assets: []fs.DirEntry{
-			ats.AssetEntry(assets.WebPackConfig),
-			ats.AssetEntry(assets.SSRProtoFile),
-			ats.AssetEntry(assets.JsWebPackConfig),
-			ats.AssetEntry(assets.WebPackSWCConfig),
-		},
-		Mkdirs: opts.Dirs,
+		Assets:      fileAssets,
+		Mkdirs:      opts.Dirs,
 	}
 
 	if err = s.Make(); err != nil {
